@@ -10,9 +10,15 @@ Preferences are optional, so commands open directly with defaults and no setup s
 
 Each command session selects an ordered random pool of up to 10 paragraphs or 20 sentences, without repeated source units. The preview displays the requested prefix: increasing the count preserves existing text, and shrinking then growing restores the same sequence. Only Regenerate or reopening the command selects another pool. Separate generations may overlap. Sentence output is joined with spaces; paragraphs are separated by blank lines. Attribution and source links are available through **Information** and are not appended to copied text.
 
+**Total characters** and **Total words** appear as a compact summary beneath a divider after the generated text. The summary is an inline SVG with smaller text, left-aligned labels, right-aligned values, theme-aware colors, and a text alternative containing both totals. It scrolls with the preview instead of reserving a separate metadata panel. Totals update with count edits and regeneration; invalid input retains the last valid preview’s totals. Totals are hidden while loading or when no preview is available. They measure the exact raw text copied or pasted, including spaces and paragraph separators, and exclude Markdown escaping and attribution. The totals themselves are never copied or pasted.
+
+Counting uses the standard [`Intl.Segmenter`](https://tc39.es/ecma402/#segmenter-objects) with Spanish word and grapheme segmentation, supported by [Node’s default full ICU build](https://nodejs.org/download/release/v22.14.0/docs/api/intl.html). Words are word-like segments: punctuation alone contributes none, and `Hola—mundo` counts as two. Characters are grapheme clusters: precomposed and decomposed accents, ZWJ emoji, and flags each count as one character. Whitespace counts too; the two LF characters between paragraphs count as two, while a CRLF pair counts as one grapheme. Segmenter predates 2023; it is an existing standard API available on the target runtime.
+
+The implementation was informed by a review of [Alfaaz’s bitmap scanner at revision a132fdb](https://github.com/thecodrr/alfaaz/blob/a132fdbda844bf83a7f5fdd6ebc9f7d3ed14fb04/src/index.ts). Our implementation is independently written, uses no Alfaaz dependency or copied source, and intentionally follows Intl’s Spanish segmentation rather than promising Alfaaz’s counts or performance.
+
 ## Run locally
 
-Use Node.js **22.13 or newer**, npm, and Raycast on macOS. Python 3 is needed only to rebuild the source extraction or run its tests. The prepared SQLite database is checked in; launching the extension needs no database setup or network requests.
+Use Node.js **22.14.0 or newer**, npm, and Raycast on macOS. Python 3 is needed only to rebuild the source extraction or run its tests. The prepared SQLite database is checked in; launching the extension needs no database setup or network requests.
 
 ```sh
 npm ci
@@ -33,7 +39,7 @@ npm run test:extraction
 npm run build
 ```
 
-Tests exercise primary action ordering, count defaults and validation, stable pool prefixes and displayed attribution, bounded random selection against SQLite, paste-label fallbacks, plain-text formatting, source extraction, sentence boundaries, spelling corrections, corpus relationships, and rebuilding the bundled database from its inputs.
+Tests exercise primary action ordering, count defaults and validation, stable pool prefixes and displayed attribution, bounded random selection against SQLite, paste-label fallbacks, plain-text formatting, Unicode word and character statistics on raw previews, source extraction, sentence boundaries, spelling corrections, corpus relationships, and rebuilding the bundled database from its inputs.
 
 ## Corpus preparation
 

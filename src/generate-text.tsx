@@ -1,6 +1,7 @@
 import {
   Action,
   ActionPanel,
+  Color,
   Detail,
   Icon,
   Keyboard,
@@ -15,6 +16,7 @@ import {
 import { usePromise, useSQL } from "@raycast/utils";
 import { join } from "node:path";
 import { useState } from "react";
+import { textStatistics, type TextStatistics } from "./text-statistics";
 import {
   GeneratedUnit,
   CountInput,
@@ -72,6 +74,7 @@ export default function GenerateText({ unit }: { unit: Unit }) {
       }
     }
   }
+  const statistics = preview ? textStatistics(preview.text) : undefined;
   const label = `${request.count} ${request.count === 1 ? unit.slice(0, -1) : unit}`;
   const markdown = [
     ...(count.error ? [`**Invalid count:** ${count.error}`] : []),
@@ -80,6 +83,7 @@ export default function GenerateText({ unit }: { unit: Unit }) {
       : preview
         ? escapeMarkdown(preview.text)
         : `# Could not generate text\n\n${message}`,
+    ...(statistics ? ["---", statisticsSummary(statistics)] : []),
   ].join("\n\n");
 
   return (
@@ -143,6 +147,27 @@ export default function GenerateText({ unit }: { unit: Unit }) {
 
 function escapeMarkdown(text: string): string {
   return text.replace(/[\\`*_{}[\]()#+\-.!>|~]/g, "\\$&");
+}
+
+function statisticsSummary(statistics: TextStatistics): string {
+  const characters = statistics.characters.toLocaleString();
+  const words = statistics.words.toLocaleString();
+  const fontSize = environment.textSize === "large" ? 28 : 24;
+  // Raycast scales the wide image to the detail pane; Markdown has no font-size control.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="96" viewBox="0 0 1000 96">
+    <g font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}">
+      <g fill="${Color.SecondaryText}">
+        <text x="0" y="28">Total characters</text>
+        <text x="0" y="76">Total words</text>
+      </g>
+      <g fill="${Color.PrimaryText}" text-anchor="end">
+        <text x="1000" y="28">${characters}</text>
+        <text x="1000" y="76">${words}</text>
+      </g>
+    </g>
+  </svg>`;
+  const image = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+  return `![Total characters: ${characters}; total words: ${words}](${image}?raycast-width=1000&raycast-height=96)`;
 }
 
 function InformationAction({ selected = [] }: { selected?: SourceStory[] }) {
