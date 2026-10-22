@@ -14,10 +14,17 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "lorem-ipsum-sentence",
-      "title": "Generate Sub Terra Text",
+      "name": "generate-paragraphs",
+      "title": "Generate Sub Terra Paragraphs",
       "subtitle": "Vibed Ipsum",
-      "description": "Preview, copy, or paste random sentences and paragraphs from Sub terra",
+      "description": "Preview, copy, or paste random paragraphs from Sub terra",
+      "mode": "view"
+    },
+    {
+      "name": "generate-sentences",
+      "title": "Generate Sub Terra Sentences",
+      "subtitle": "Vibed Ipsum",
+      "description": "Preview, copy, or paste random sentences from Sub terra",
       "mode": "view"
     }
   ],

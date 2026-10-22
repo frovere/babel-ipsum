@@ -2,9 +2,11 @@
 
 Generate Spanish placeholder text from Baldomero Lillo’s _Sub terra_ in Raycast. The extension works entirely offline on macOS and includes all thirteen stories indexed by [Wikisource](https://es.wikisource.org/wiki/Sub_terra).
 
-Choose **1–20 sentences** or **1–10 paragraphs**, generate a preview, then copy or paste the result. **Regenerate** (`⌘R`) selects another set. Copy and paste dismiss Raycast. Your unit and count are remembered; the generated text is never saved as history. The first launch defaults to three paragraphs.
+Open **Generate Sub Terra Paragraphs** (1–10) or **Generate Sub Terra Sentences** (1–20) to see a split preview with **3** in the count field. Edit the search bar to change the count immediately. Clearing it uses the default **3** while leaving the field empty. Counts must be whole numbers within the command’s range; surrounding whitespace is ignored. Invalid input keeps the last valid preview visible with validation feedback, and hides Copy, Paste, and Regenerate until the input is valid.
 
-Each result selects complete source units at random across the collection, without repeating a source unit within that result. Separate generations may overlap. Sentence output is joined with spaces; paragraphs are separated by blank lines. Attribution and source links are available through **Information** and are not appended to copied text.
+**Copy Text** is the primary action (`Enter`). Paste is labeled **Paste to <app>** using the frontmost app’s name captured when the command opens, or **Paste to Active App** if no usable name is available. This label identifies the captured app; it does not check whether the app can accept pasted text. Copy and paste dismiss Raycast and clear Root Search. **Regenerate** (`⌘R`) selects a fresh pool. Reopening a command starts with **3** and a new pool. The extension does not persist count input or generated text; Raycast manages its own history and clipboard behavior.
+
+Each command session selects an ordered random pool of up to 10 paragraphs or 20 sentences, without repeated source units. The preview displays the requested prefix: increasing the count preserves existing text, and shrinking then growing restores the same sequence. Only Regenerate or reopening the command selects another pool. Separate generations may overlap. Sentence output is joined with spaces; paragraphs are separated by blank lines. Attribution and source links are available through **Information** and are not appended to copied text.
 
 ## Run locally
 
@@ -15,11 +17,12 @@ npm ci
 npm run dev
 ```
 
-Open **Generate Sub Terra Text** in Raycast. Development mode registers the extension with your local Raycast installation. To compile without registering it, run `npm run build`; output stays in this repository’s `dist/` directory.
+Open **Generate Sub Terra Paragraphs** or **Generate Sub Terra Sentences** in Raycast. Launching opens the preview directly; edit its search bar to choose how much text to generate. Development mode registers the extension with your local Raycast installation. To compile without registering it, run `npm run build`; output stays in this repository’s `dist/` directory.
 
 ## Checks
 
 ```sh
+npm run build # generates Raycast types before typechecking
 npm run format:check
 npm run typecheck
 npm run lint
@@ -28,7 +31,7 @@ npm run test:extraction
 npm run build
 ```
 
-Tests exercise count validation, saved-setting recovery, random selection against SQLite, plain-text formatting, source extraction, sentence boundaries, spelling corrections, corpus relationships, and rebuilding the bundled database from its inputs.
+Tests exercise count defaults and validation, stable pool prefixes and displayed attribution, bounded random selection against SQLite, paste-label fallbacks, plain-text formatting, source extraction, sentence boundaries, spelling corrections, corpus relationships, and rebuilding the bundled database from its inputs.
 
 ## Corpus preparation
 
