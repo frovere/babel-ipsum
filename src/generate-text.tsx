@@ -9,6 +9,8 @@ import {
   closeMainWindow,
   environment,
   getFrontmostApplication,
+  getPreferenceValues,
+  openExtensionPreferences,
 } from "@raycast/api";
 import { usePromise, useSQL } from "@raycast/utils";
 import { join } from "node:path";
@@ -24,6 +26,8 @@ import {
   updateCountInput,
   generationQuery,
   parseCountInput,
+  validateGenerationRequest,
+  orderedActions,
 } from "./generator";
 
 const DATABASE_PATH = join(environment.assetsPath, "subterra.sqlite");
@@ -38,13 +42,21 @@ async function getPasteTitle(): Promise<string> {
 }
 
 export default function GenerateText({ unit }: { unit: Unit }) {
-  const [count, setCount] = useState<CountInput>(() => ({ input: "3", request: parseCountInput(unit, "3") }));
+  const { data: pasteTitle } = usePromise(getPasteTitle);
+  const preferences = getPreferenceValues<Preferences>();
+  const defaultCount = validateGenerationRequest(
+    unit,
+    unit === "paragraphs" ? preferences.defaultParagraphCount : preferences.defaultSentenceCount,
+  ).count;
+  const [count, setCount] = useState<CountInput>(() => ({
+    input: "",
+    request: parseCountInput(unit, "", defaultCount),
+  }));
   // Installed useSQL uses uncached usePromise. The query depends only on the unit,
   // so count edits retain this session’s pool; only Regenerate revalidates it.
   const { data, isLoading, error, revalidate } = useSQL<GeneratedUnit>(DATABASE_PATH, generationQuery(unit), {
     onError: () => undefined,
   });
-  const { data: pasteTitle } = usePromise(getPasteTitle);
   const request = count.request;
   let preview: ReturnType<typeof selectPreview> | undefined;
   let message: string | undefined;
@@ -78,8 +90,8 @@ export default function GenerateText({ unit }: { unit: Unit }) {
       filtering={false}
       throttle={false}
       searchText={count.input}
-      onSearchTextChange={(input) => setCount((previous) => updateCountInput(previous, input))}
-      searchBarPlaceholder={`Number of ${unit} (default 3)`}
+      onSearchTextChange={(input) => setCount((previous) => updateCountInput(previous, input, defaultCount))}
+      searchBarPlaceholder={`Number of ${unit} (default ${defaultCount})`}
       selectedItemId="preview"
     >
       <List.Item
@@ -89,24 +101,29 @@ export default function GenerateText({ unit }: { unit: Unit }) {
         detail={<List.Item.Detail markdown={markdown} />}
         actions={
           <ActionPanel>
-            {preview && !count.error ? (
-              <Action.CopyToClipboard
-                title="Copy Text"
-                content={preview.text}
-                onCopy={() => {
-                  void closeMainWindow({ clearRootSearch: true, popToRootType: PopToRootType.Immediate });
-                }}
-              />
-            ) : null}
-            {preview && !count.error ? (
-              <Action.Paste
-                title={pasteTitle ?? "Paste to Active App"}
-                content={preview.text}
-                onPaste={() => {
-                  void closeMainWindow({ clearRootSearch: true, popToRootType: PopToRootType.Immediate });
-                }}
-              />
-            ) : null}
+            {preview && !count.error
+              ? orderedActions(preferences.primaryAction).map((action) =>
+                  action === "copy" ? (
+                    <Action.CopyToClipboard
+                      key="copy"
+                      title="Copy to Clipboard"
+                      content={preview.text}
+                      onCopy={() => {
+                        void closeMainWindow({ clearRootSearch: true, popToRootType: PopToRootType.Immediate });
+                      }}
+                    />
+                  ) : (
+                    <Action.Paste
+                      key="paste"
+                      title={pasteTitle ?? "Paste to Active App"}
+                      content={preview.text}
+                      onPaste={() => {
+                        void closeMainWindow({ clearRootSearch: true, popToRootType: PopToRootType.Immediate });
+                      }}
+                    />
+                  ),
+                )
+              : null}
             {!isLoading && !count.error ? (
               <Action
                 title={message ? "Try Again" : "Regenerate"}
@@ -116,6 +133,7 @@ export default function GenerateText({ unit }: { unit: Unit }) {
               />
             ) : null}
             <InformationAction selected={preview?.selected} />
+            <Action title="Open Extension Preferences" icon={Icon.Gear} onAction={openExtensionPreferences} />
           </ActionPanel>
         }
       />

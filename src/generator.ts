@@ -25,9 +25,9 @@ export function validateGenerationRequest(unit: unknown, count: unknown): Genera
   return { unit, count: Number(count) };
 }
 
-export function parseCountInput(unit: Unit, count: unknown): GenerationRequest {
+export function parseCountInput(unit: Unit, count: unknown, defaultCount = 3): GenerationRequest {
   const normalized = typeof count === "string" ? count.trim() : count;
-  return validateGenerationRequest(unit, normalized === undefined || normalized === "" ? 3 : normalized);
+  return validateGenerationRequest(unit, normalized === undefined || normalized === "" ? defaultCount : normalized);
 }
 
 function maximumCount(unit: Unit): number {
@@ -36,9 +36,9 @@ function maximumCount(unit: Unit): number {
 
 export type CountInput = { input: string; request: GenerationRequest; error?: string };
 
-export function updateCountInput(previous: CountInput, input: string): CountInput {
+export function updateCountInput(previous: CountInput, input: string, defaultCount = 3): CountInput {
   try {
-    return { input, request: parseCountInput(previous.request.unit, input) };
+    return { input, request: parseCountInput(previous.request.unit, input, defaultCount) };
   } catch (error) {
     return { input, request: previous.request, error: error instanceof Error ? error.message : "Enter a valid count." };
   }
@@ -82,4 +82,10 @@ export function pasteActionTitle(name: unknown): string {
   return target && target.toLowerCase() !== "raycast" && !/[\r\n\t]/.test(target)
     ? `Paste to ${target}`
     : "Paste to Active App";
+}
+
+export type PrimaryAction = "copy" | "paste";
+
+export function orderedActions(primaryAction: PrimaryAction): PrimaryAction[] {
+  return primaryAction === "paste" ? ["paste", "copy"] : ["copy", "paste"];
 }

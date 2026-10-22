@@ -9,6 +9,7 @@ import {
   selectPreview,
   updateCountInput,
   pasteActionTitle,
+  orderedActions,
   type CountInput,
   type GeneratedUnit,
   type GenerationRequest,
@@ -82,6 +83,30 @@ test("rejects invalid nonblank count inputs", () => {
     ]) {
       assert.throws(() => parseCountInput(unit, count), new RegExp(`whole number from 1 to ${maximum}`));
     }
+  }
+});
+
+test("uses the configured default for an empty field and when clearing edited input", () => {
+  for (const [unit, defaultCount] of [
+    ["paragraphs", 7],
+    ["sentences", 14],
+  ] as const) {
+    let state: CountInput = { input: "", request: parseCountInput(unit, "", defaultCount) };
+    assert.equal(state.input, "");
+    assert.deepEqual(state.request, { unit, count: defaultCount });
+    state = updateCountInput(state, "2", defaultCount);
+    assert.equal(state.request.count, 2);
+    state = updateCountInput(state, "invalid", defaultCount);
+    assert.equal(state.request.count, 2);
+    assert.match(state.error ?? "", /whole number/);
+    for (const input of ["", " ", "\t\n"]) {
+      state = updateCountInput(state, input, defaultCount);
+      assert.equal(state.input, input);
+      assert.deepEqual(state.request, { unit, count: defaultCount });
+      assert.equal(state.error, undefined);
+    }
+    assert.throws(() => parseCountInput(unit, "0", defaultCount), /whole number/);
+    assert.throws(() => parseCountInput(unit, "", 21), /whole number/);
   }
 });
 
@@ -224,4 +249,9 @@ test("paste label uses a usable captured application name or the authorized fall
   for (const name of [undefined, null, "", "  ", "Raycast", "raycast", "App\nName", 42]) {
     assert.equal(pasteActionTitle(name), "Paste to Active App");
   }
+});
+
+test("the configured primary action comes first while both actions remain available", () => {
+  assert.deepEqual(orderedActions("copy"), ["copy", "paste"]);
+  assert.deepEqual(orderedActions("paste"), ["paste", "copy"]);
 });
