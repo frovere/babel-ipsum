@@ -115,6 +115,6 @@ The four bundled sampled works—Fantine, Divina Commedia, Journey to the West, 
 
 The root [MIT license](LICENSE) covers project software and documentation outside the corpus. [Corpus licensing](corpus/LICENSE.md) and [source notices](corpus/NOTICE.md) cover literary data separately. Historical source substitutions and outstanding edition questions are recorded in those notices and book metadata.
 
-`corpus/LICENSE.md` and `extension/assets/corpus-license.txt` must remain identical. Runtime assets ship with Raycast builds, including `ray develop`, so the corpus license is available without a release-only copy step. Distribution tests verify the license and packaged contents.
+The packaged licenses preserve the canonical grants in `LICENSE` and `corpus/LICENSE.md`, with notice references adapted to the standalone extension. Runtime assets ship with Raycast builds, including `ray develop`, so the corpus license is available without a release-only copy step. Distribution tests verify the license and packaged contents.
 
 `npm run build` clears only repository-local `extension/dist/` before compiling, preventing obsolete command maps from being distributed. It does not register or modify the installed extension. The explicit `BOOK_IDS` catalog in `scripts/build-corpus.mjs` selects the thirteen bundled books. Hindi and Russian prepared files and acquisition records remain development inputs only; they are excluded from the runtime database and settings.
