@@ -163,7 +163,7 @@ export function formatTextWithAttribution(book: Book, preview: ReturnType<typeof
     `Edition: ${book.edition}`,
     `Source attribution: ${book.attribution}`,
     `License: ${book.license}`,
-    "Modifications: Excerpts selected and combined by Vibed Ipsum.",
+    "Modifications: Excerpts selected and combined by Babel Ipsum.",
     `Editorial note: ${book.editorial_note}`,
     "Selected sources:",
     ...sources,

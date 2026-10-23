@@ -52,7 +52,7 @@ export function prepareSubTerra() {
       license:
         "Original literary text is public domain; the prepared modernization and any protected Wikisource contributions are provided under CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0/. Public-domain elements remain unrestricted by that license.",
       attribution:
-        "Baldomero Lillo; Wikisource contributors; prepared modernization by Felipe Rovere / Vibed Ipsum. See corpus/NOTICE.md and corpus/LICENSE.md.",
+        "Baldomero Lillo; Wikisource contributors; prepared modernization by Felipe Rovere / Babel Ipsum. See corpus/NOTICE.md and corpus/LICENSE.md.",
       editorialNote:
         "Spelling and accents modernized; verified transcription errors corrected. See corpus/editorial/sub-terra/MODERNIZATION.md.",
       sentenceSeparator: " ",

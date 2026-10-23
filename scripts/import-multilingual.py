@@ -109,7 +109,7 @@ class Snapshots:
             encoded = quote(url, safe=":/?=&%#")
             for attempt in range(4):
                 try:
-                    request = Request(encoded, headers={"User-Agent": "VibedIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)"})
+                    request = Request(encoded, headers={"User-Agent": "BabelIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)"})
                     with urlopen(request, timeout=60) as response:
                         raw = response.read()
                         actual_url = response.url

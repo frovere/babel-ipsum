@@ -41,7 +41,7 @@ import {
   orderedActions,
 } from "./generator";
 
-const DATABASE_PATH = join(environment.assetsPath, "corpus.sqlite");
+const DATABASE_PATH = join(environment.assetsPath, "corpus.db");
 type RuntimePreferences = Preferences & { defaultBook?: string };
 
 async function getPasteTitle(): Promise<string> {

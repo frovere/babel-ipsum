@@ -16,7 +16,7 @@ async function fetchPage(url, title) {
     const response = await fetch(url, {
       headers: {
         Accept: "text/html",
-        "User-Agent": "VibedIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)",
+        "User-Agent": "BabelIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)",
       },
       signal: AbortSignal.timeout(30_000),
     });

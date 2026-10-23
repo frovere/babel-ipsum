@@ -55,7 +55,7 @@ def acquire(url, path, fetch):
                 with urllib.request.urlopen(request, timeout=90) as response:
                     raw = json.load(response)["data"]["rawHtml"].encode("utf-8")
             else:
-                request = urllib.request.Request(encoded, headers={"User-Agent": "VibedIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)"})
+                request = urllib.request.Request(encoded, headers={"User-Agent": "BabelIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)"})
                 with urllib.request.urlopen(request, timeout=60) as response:
                     raw = response.read()
                     response_url = response.url

@@ -111,7 +111,7 @@ test("recognizes multilingual sentence punctuation without treating verse lines 
 
 test("rebuilds all thirteen offline books with provenance, bounded selection, and preserved Sub terra", () => {
   const directory = mkdtempSync(join(process.cwd(), ".corpus-test-"));
-  const database = join(directory, "corpus.sqlite");
+  const database = join(directory, "corpus.db");
   try {
     const stats = buildCorpus(database);
     assert.equal(stats.length, 13);
@@ -256,7 +256,7 @@ test("rebuilds all thirteen offline books with provenance, bounded selection, an
     // Catch stale packaged content without depending on SQLite's file-header
     // version, which can differ across supported Node.js releases.
     const rebuilt = new DatabaseSync(database, { readOnly: true });
-    const packaged = new DatabaseSync("assets/corpus.sqlite", { readOnly: true });
+    const packaged = new DatabaseSync("assets/corpus.db", { readOnly: true });
     try {
       for (const table of ["books", "sections", "passages", "sentences", "metadata"]) {
         const order = table === "metadata" ? "key" : "id";
@@ -288,7 +288,7 @@ test("builds all thirteen books from prepared JSON without a source cache", () =
     cpSync("corpus/books", join(directory, "corpus/books"), { recursive: true });
     const result = spawnSync(process.execPath, ["scripts/build-corpus.mjs"], { cwd: directory, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
-    const db = new DatabaseSync(join(directory, "assets/corpus.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(directory, "assets/corpus.db"), { readOnly: true });
     try {
       assert.equal(db.prepare("SELECT count(*) AS count FROM books").get().count, 13);
       const counts = db

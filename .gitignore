@@ -18,7 +18,7 @@ compiled_raycast_rust
 *.rayext
 __pycache__/
 *.pyc
-*.sqlite.building
+*.db.building
 .corpus-test-*/
 /.qa/
 /.cache/
@@ -27,3 +27,6 @@ __pycache__/
 /corpus/sources/
 /corpus/books/sources/
 /corpus/vocabulary.txt
+
+# Unselected artwork concepts and comparisons
+/.artwork-explorations/

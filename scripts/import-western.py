@@ -61,7 +61,7 @@ def acquire(book, section, url, args):
         encoded = urllib.parse.quote(url, safe=":/?=&%")
         for attempt in range(4):
             try:
-                request = urllib.request.Request(encoded, headers={"User-Agent":"VibedIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)", "Accept":"text/html"})
+                request = urllib.request.Request(encoded, headers={"User-Agent":"BabelIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)", "Accept":"text/html"})
                 with urllib.request.urlopen(request, timeout=50) as response:
                     data = response.read()
                     if response.headers.get_content_charset("utf-8").lower() not in {"utf-8","utf8"}:

@@ -262,7 +262,7 @@ test("attribution preserves the exact Unicode preview prefix and the selected bo
       assert.ok(copied.includes("Edition: 1917"));
       assert.ok(copied.includes(`Source attribution: ${book.attribution}`));
       assert.ok(copied.includes(`License: ${book.license}`));
-      assert.ok(copied.includes("Modifications: Excerpts selected and combined by Vibed Ipsum."));
+      assert.ok(copied.includes("Modifications: Excerpts selected and combined by Babel Ipsum."));
       assert.ok(copied.includes(`Editorial note: ${book.editorial_note}`));
       assert.ok(copied.includes("Other book (1917)\nhttps://example.com/c\nhttps://example.com/c?oldid=3"));
       assert.ok(copied.includes("أجنحةٌ *متكسرةٌ*."));

@@ -4,3 +4,4 @@ corpus/editorial/sub-terra/original.json
 dist/
 tests/fixtures/**/*.html
 tests/fixtures/**/*.json
+.artwork-explorations/

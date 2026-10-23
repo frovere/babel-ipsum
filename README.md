@@ -1,6 +1,10 @@
-# Vibed Ipsum
+# Babel Ipsum
 
 Generate placeholder text from classic literature in Raycast. Choose from **13 books in 12 languages**, including Cicero, Shakespeare, Kafka, and Baldomero Lillo. Works entirely offline on macOS.
+
+<a href="media/poster.webp">
+  <img src="media/poster.webp" alt="Babel Ipsum poster: classic literature in 13 books and 12 languages" width="360" />
+</a>
 
 ## Use
 
@@ -12,13 +16,14 @@ Preview the text and its word and character counts before copying. Passages pres
 
 ## Settings
 
-In **Raycast Settings → Extensions → Vibed Ipsum**, choose your default book, sentence and passage counts, and whether Enter copies or pastes.
+In **Raycast Settings → Extensions → Babel Ipsum**, choose your default book, sentence and passage counts, and whether Enter copies or pastes.
 
 The defaults are Cicero's _De finibus bonorum et malorum — Liber I_, three sentences or passages, and Copy to Clipboard.
 
 ## More
 
 - [Books, sources, and attribution](corpus/NOTICE.md)
+- [Development, corpus rebuilds, and publishing](DEVELOPMENT.md)
 - [Artwork](artwork/README.md)
 
 Code is [MIT licensed](LICENSE); book text follows its [source terms](corpus/LICENSE.md).
