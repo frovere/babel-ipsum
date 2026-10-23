@@ -1,6 +1,6 @@
 # Babel Ipsum artwork
 
-**Forest Monochrome** is the official identity: an open-book emblem in a single forest ink with screened densities on warm cream paper.
+**Library Rascal — Vermilion** is the official identity: a sly cat-shaped document with a near-black copy sheet behind it, printed in vermilion ink on warm ivory paper.
 
 | Asset                                         | Location                                                  |
 | --------------------------------------------- | --------------------------------------------------------- |
@@ -9,7 +9,7 @@
 | Runtime icon, 512 × 512 PNG                   | [assets/extension-icon.png](../assets/extension-icon.png) |
 | Exact imagegen prompts and provenance         | [PROMPTS.md](PROMPTS.md)                                  |
 
-The masters were generated with the built-in imagegen tool under Astra's art direction. Lossless WebP conversion preserves their decoded pixels exactly. The poster is an illustration, not a screenshot of the extension. Its catalog counts are 13 books and 12 languages, updated with a focused built-in imagegen edit that preserves the Forest Monochrome composition.
+The masters were generated with the built-in imagegen tool under Astra's art direction. Lossless WebP conversion preserves their decoded pixels exactly. The poster is an illustration, not a screenshot of the extension. Its catalog counts are 13 books and 12 languages. The poster inherits the icon's palette, letterpress shapes, and ink wear; its emblem is a generated interpretation rather than a pixel-exact insertion of the icon.
 
 ## Rebuild the runtime icon
 
@@ -19,10 +19,12 @@ Install [ImageMagick](https://imagemagick.org/script/download.php), then run fro
 npm run artwork:build
 ```
 
-This resizes the WebP icon master to 512 × 512 and writes `assets/extension-icon.png`. The PNG remains checked in so normal extension builds need no image tools. The poster lives only in `media/` for Raycast README support; the icon master lives here. Separate inspection derivatives are not retained.
+This resizes the WebP icon master to 512 × 512, applies an antialiased 128-pixel corner radius with transparent corners, and writes `assets/extension-icon.png`. The WebP master and poster stay unchanged. The PNG remains checked in so normal extension builds need no image tools. The poster lives only in `media/` for Raycast README support; the icon master lives here. Separate inspection derivatives are not retained.
 
 ## Palette
 
-Palette target: forest `#215C48`, with 100% ink for the left page and major headings, 70% for the right page and secondary elements, and 45% for binding and connectors. These are generation targets, not measured ink coverage or pixel-perfect color claims.
+Palette targets: burnt vermilion `#D74925` for the cat document and emphasis, near-black `#24221D` for the rear sheet and supporting type, and warm ivory `#F4E9D4` for paper and negative space. These are generation targets, not measured ink coverage or pixel-perfect color claims.
 
-Unused concepts, palette comparisons, and the historical mining-lamp artwork remain locally in the Git-ignored `.artwork-explorations/` directory.
+The current poster tagline is "Borrow a little brilliance." Its approved copy refresh, before poster, selected PNG master, and exact edit prompt are archived in `.artwork-explorations/library-rascal-copy-refresh-r1/`; the edit prompt and provenance are also appended to [PROMPTS.md](PROMPTS.md).
+
+The retired Forest Monochrome set, unused concepts, palette comparisons, and the historical mining-lamp artwork remain locally in the Git-ignored `.artwork-explorations/` directory.

@@ -86,9 +86,9 @@ See Raycast's [publishing guide](https://developers.raycast.com/basics/publish-a
 
 ## Artwork
 
-**Forest Monochrome** is the official Babel Ipsum identity: a risograph open book in screened forest ink on warm cream paper. The 512-pixel icon is packaged at `assets/extension-icon.png`; the promotional poster is retained at [media/poster.webp](media/poster.webp).
+**Library Rascal — Vermilion** is the official Babel Ipsum identity: a sly cat-shaped document and offset copy sheet in vermilion and near-black ink on warm ivory paper. The 512-pixel icon is packaged at `assets/extension-icon.png`; the promotional poster is retained at [media/poster.webp](media/poster.webp).
 
-Lossless WebP masters, exact prompts, and palette notes are in [the Forest Monochrome set](artwork/README.md). With ImageMagick installed, run `npm run artwork:build` to regenerate the 512 × 512 PNG runtime icon. This is an explicit artwork task; normal extension builds use the checked-in icon. Other concepts are preserved locally in the Git-ignored `.artwork-explorations/` directory. Promotional artwork is separate from actual Raycast screenshots.
+Lossless WebP masters, exact prompts, and palette notes are in [the Library Rascal set](artwork/README.md). With ImageMagick installed, run `npm run artwork:build` to regenerate the 512 × 512 PNG runtime icon. This is an explicit artwork task; normal extension builds use the checked-in icon. Other concepts are preserved locally in the Git-ignored `.artwork-explorations/` directory. Promotional artwork is separate from actual Raycast screenshots.
 
 ## Generation and storage behavior
 
