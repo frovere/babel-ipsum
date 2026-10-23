@@ -119,13 +119,16 @@ class Snapshots:
                             raise ValueError(f"Missing declared source charset: {url}")
                         encoding = declared.group(1).decode("ascii")
                     raw.decode(encoding)  # Reject an unexpected source encoding.
+                    if filename in self.manifest:
+                        self.verify(filename, url, raw)
                     self.directory.mkdir(parents=True, exist_ok=True)
                     path.write_bytes(raw)
-                    self.record(filename, {
-                        "sourceUrl": url, "responseUrl": actual_url, "encoding": encoding,
-                        "retrievedOn": date.today().isoformat(),
-                        "sha256": hashlib.sha256(raw).hexdigest(),
-                    })
+                    if filename not in self.manifest:
+                        self.record(filename, {
+                            "sourceUrl": url, "responseUrl": actual_url, "encoding": encoding,
+                            "retrievedOn": date.today().isoformat(),
+                            "sha256": hashlib.sha256(raw).hexdigest(),
+                        })
                     time.sleep(0.6)
                     break
                 except (HTTPError, URLError, TimeoutError) as error:
@@ -142,7 +145,8 @@ class Snapshots:
         metadata = self.manifest[filename]
         expected = metadata.get("sha256", metadata.get("snapshotSha256"))
         if metadata["sourceUrl"] != url or hashlib.sha256(raw).hexdigest() != expected:
-            raise ValueError(f"Snapshot provenance mismatch: {self.directory / filename}")
+            raise ValueError(f"Snapshot provenance mismatch: {self.directory / filename}; "
+                             "--fetch cannot replace a recorded pin. Review the source and provenance explicitly.")
         raw.decode(metadata["encoding"])
         return metadata
 

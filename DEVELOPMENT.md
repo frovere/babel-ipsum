@@ -54,7 +54,9 @@ npm run corpus:extract:multilingual   # Replay cached multilingual sources offli
 npm run corpus:build
 ```
 
-The multilingual fetch command retains existing snapshots; it does not refresh them. `npm run corpus:prepare:sub-terra` reapplies the tracked editorial corrections without needing HTML. The shared import commands route Dante and Greek to `scripts/import-historical-dante-greek.py`, and Korean/Hindi to `scripts/import-historical-hindi-korean.py`. These adapters retain pinned snapshots; `--refresh` does not replace their historical inputs. Full extraction replay requires the matching snapshots in `.cache/`; a fresh checkout does not include them. Source changes can invalidate contextual corrections and must be reviewed.
+The multilingual fetch command retains existing snapshots; it does not refresh them. When restoring a missing cache file, the multilingual and Western importers verify downloaded bytes against any recorded hash before saving them. A mismatch leaves the cache and provenance unchanged. Matching downloads preserve the original provenance record. Western sources can be intentionally replaced with `--refresh`; multilingual source replacements require explicit review of the source and provenance rather than `--fetch`.
+
+`npm run corpus:prepare:sub-terra` reapplies the tracked editorial corrections without needing HTML. The shared import commands route Dante and Greek to `scripts/import-historical-dante-greek.py`, and Korean/Hindi to `scripts/import-historical-hindi-korean.py`. These adapters retain pinned snapshots; `--refresh` does not replace their historical inputs. Full extraction replay requires the matching snapshots in `.cache/`; a fresh checkout does not include them. Source changes can invalidate contextual corrections and must be reviewed.
 
 With cached sources available, `npm run corpus:audit` checks all recorded snapshot hashes, including edition and reuse evidence, checks Sub terra's editorial preparation, and verifies both importers' full extraction without rewriting prepared books or provenance. Runtime generation never fetches sources.
 

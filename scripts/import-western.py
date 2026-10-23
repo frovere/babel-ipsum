@@ -54,6 +54,9 @@ def plans():
 
 def acquire(book, section, url, args):
     path = ROOT / ".cache/corpus/sources" / book / f"{section}.html"
+    ledger_path = ROOT / "corpus/provenance" / f"{book}.json"
+    ledger = json.loads(ledger_path.read_text()) if ledger_path.exists() else {"schemaVersion":1,"encoding":"UTF-8; snapshots retain exact response bytes","sources":{}}
+    previous = ledger["sources"].get(path.name)
     fetched = False
     if args.refresh or not path.exists():
         if args.offline:
@@ -67,6 +70,10 @@ def acquire(book, section, url, args):
                     if response.headers.get_content_charset("utf-8").lower() not in {"utf-8","utf8"}:
                         raise ValueError(f"Unexpected non-UTF8 response: {url}")
                 data.decode("utf-8")
+                if previous and not args.refresh and previous["snapshotSha256"] != hashlib.sha256(data).hexdigest():
+                    raise ValueError(f"Snapshot differs from acquisition ledger: {path}; use --refresh to replace the recorded pin")
+                if args.check and not previous:
+                    raise ValueError(f"Missing acquisition record: {path}")
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)
                 fetched = True
@@ -82,13 +89,10 @@ def acquire(book, section, url, args):
                     delay = min(60, max(delay, int(error.headers.get("Retry-After", "0")) if error.headers.get("Retry-After", "0").isdigit() else delay))
                 time.sleep(delay)
     data = path.read_bytes()
-    ledger_path = ROOT / "corpus/provenance" / f"{book}.json"
-    ledger = json.loads(ledger_path.read_text()) if ledger_path.exists() else {"schemaVersion":1,"encoding":"UTF-8; snapshots retain exact response bytes","sources":{}}
-    previous = ledger["sources"].get(path.name)
     digest = hashlib.sha256(data).hexdigest()
     if previous and not fetched and previous["snapshotSha256"] != digest:
         raise ValueError(f"Snapshot differs from acquisition ledger: {path}")
-    if fetched or not previous:
+    if (fetched and args.refresh) or not previous:
         if args.check:
             raise ValueError(f"Missing acquisition record: {path}")
         # First ledger creation records the local acquisition file's date; later

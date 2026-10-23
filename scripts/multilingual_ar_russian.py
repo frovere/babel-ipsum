@@ -59,11 +59,14 @@ def acquire(url, path, fetch):
                 with urllib.request.urlopen(request, timeout=60) as response:
                     raw = response.read()
                     response_url = response.url
-            path.parent.mkdir(parents=True, exist_ok=True)
             raw.decode("utf-8")
+            if path.name in snapshots.manifest:
+                snapshots.verify(path.name, url, raw)
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(raw)
-            snapshots.record(path.name, {"sourceUrl": url, "responseUrl": response_url, "encoding": "utf-8",
-                "retrievedOn": COMMON.date.today().isoformat(), "sha256": hashlib.sha256(raw).hexdigest()})
+            if path.name not in snapshots.manifest:
+                snapshots.record(path.name, {"sourceUrl": url, "responseUrl": response_url, "encoding": "utf-8",
+                    "retrievedOn": COMMON.date.today().isoformat(), "sha256": hashlib.sha256(raw).hexdigest()})
             time.sleep(3)
             return raw
         except (urllib.error.URLError, TimeoutError) as error:
