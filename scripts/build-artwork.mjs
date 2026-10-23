@@ -22,7 +22,7 @@ execFileSync(
     "CopyOpacity",
     "-composite",
     "-strip",
-    "assets/extension-icon.png",
+    "extension/assets/extension-icon.png",
   ],
   { cwd: new URL("../", import.meta.url), stdio: "inherit" },
 );

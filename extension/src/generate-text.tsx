@@ -42,7 +42,6 @@ import {
 } from "./generator";
 
 const DATABASE_PATH = join(environment.assetsPath, "corpus.db");
-type RuntimePreferences = Preferences & { defaultBook?: string };
 
 async function getPasteTitle(): Promise<string> {
   try {
@@ -56,7 +55,7 @@ type SelectionState = { bookId: string; revision: number; result?: PoolState };
 
 export default function GenerateText({ unit }: { unit: Unit }) {
   const { data: pasteTitle } = usePromise(getPasteTitle);
-  const preferences = getPreferenceValues<RuntimePreferences>();
+  const preferences = getPreferenceValues<Preferences>();
   const defaultCount = validateGenerationRequest(
     unit,
     unit === "passages" ? preferences.defaultParagraphCount : preferences.defaultSentenceCount,

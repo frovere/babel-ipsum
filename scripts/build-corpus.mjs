@@ -258,7 +258,7 @@ export function loadBooks() {
   });
 }
 
-export function buildCorpus(outputPath = join(root, "assets/corpus.db")) {
+export function buildCorpus(outputPath = join(root, "extension/assets/corpus.db")) {
   const sources = loadBooks();
   const temporaryPath = `${outputPath}.building`;
   writeFileSync(temporaryPath, "");
@@ -394,5 +394,5 @@ export function buildCorpus(outputPath = join(root, "assets/corpus.db")) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const stats = buildCorpus();
   console.table(stats);
-  console.log("Built assets/corpus.db from the checked-in multilingual sources.");
+  console.log("Built extension/assets/corpus.db from the checked-in multilingual sources.");
 }

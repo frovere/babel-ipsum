@@ -246,7 +246,7 @@ test("rebuilds all thirteen offline books with provenance, bounded selection, an
           `${bookId} preserves verse lines`,
         );
       }
-      const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+      const manifest = JSON.parse(readFileSync("extension/package.json", "utf8"));
       const defaults = manifest.preferences.find((preference) => preference.name === "defaultBook");
       assert.equal(defaults.default, "de-finibus");
       assert.deepEqual(defaults.data.map((option) => option.value).sort(), [...BOOK_IDS].sort());
@@ -256,7 +256,7 @@ test("rebuilds all thirteen offline books with provenance, bounded selection, an
     // Catch stale packaged content without depending on SQLite's file-header
     // version, which can differ across supported Node.js releases.
     const rebuilt = new DatabaseSync(database, { readOnly: true });
-    const packaged = new DatabaseSync("assets/corpus.db", { readOnly: true });
+    const packaged = new DatabaseSync("extension/assets/corpus.db", { readOnly: true });
     try {
       for (const table of ["books", "sections", "passages", "sentences", "metadata"]) {
         const order = table === "metadata" ? "key" : "id";
@@ -283,12 +283,12 @@ test("builds all thirteen books from prepared JSON without a source cache", () =
   const directory = mkdtempSync(".corpus-test-no-cache-");
   try {
     mkdirSync(join(directory, "scripts"));
-    mkdirSync(join(directory, "assets"));
+    mkdirSync(join(directory, "extension/assets"), { recursive: true });
     cpSync("scripts/build-corpus.mjs", join(directory, "scripts/build-corpus.mjs"));
     cpSync("corpus/books", join(directory, "corpus/books"), { recursive: true });
     const result = spawnSync(process.execPath, ["scripts/build-corpus.mjs"], { cwd: directory, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
-    const db = new DatabaseSync(join(directory, "assets/corpus.db"), { readOnly: true });
+    const db = new DatabaseSync(join(directory, "extension/assets/corpus.db"), { readOnly: true });
     try {
       assert.equal(db.prepare("SELECT count(*) AS count FROM books").get().count, 13);
       const counts = db

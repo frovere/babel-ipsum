@@ -1,24 +1,29 @@
 # Development
 
-Babel Ipsum is a macOS Raycast extension. For usage, see [README.md](README.md); for book coverage and attribution, see [corpus/NOTICE.md](corpus/NOTICE.md).
+Babel Ipsum is a macOS Raycast extension. For usage, see [extension/README.md](extension/README.md); for book coverage and attribution, see [corpus/NOTICE.md](corpus/NOTICE.md).
 
 ## Setup
 
-Use Node.js **22.14.0 or newer**, npm, and Raycast on macOS. Python 3 is needed only to extract source text and run extraction tests. The checked-in `assets/corpus.db` is read-only at runtime; the extension makes no network requests and does not persist generated text.
+Use Node.js **22.22.2 or newer**, npm, and Raycast on macOS. Python 3 is needed only to extract source text and run extraction tests. The checked-in `extension/assets/corpus.db` is read-only at runtime; the extension makes no network requests and does not persist generated text.
 
 ```sh
 npm ci
+npm --prefix extension ci
 npm run dev
 ```
 
-To compile without registering the extension in Raycast, run `npm run build`. Output is written to `dist/`.
+To compile without registering the extension in Raycast, run `npm run build`. Output is written to `extension/dist/`.
+
+The root package contains only development orchestration and Prettier. The independent `extension/` package owns the Raycast manifest, dependencies, source, runtime assets, local notices, README media, tests, and build configuration. There are no workspaces or parent-directory runtime dependencies. Neither installation nor extension builds fetch sources or rebuild the checked-in database.
+
+Root application commands forward to `npm --prefix extension run ...`. You can also work from `extension/` and run `npm ci`, `npm run dev`, `npm run build`, `npm run typecheck`, `npm run lint`, and `npm test` directly. Type checking builds first to generate Raycast preference declarations. Root `npm test` runs extension tests, then corpus and canonical-license equality tests; Python extraction checks remain separate. Root formatting excludes `extension/` and invokes its own formatter scope afterward.
 
 ## Corpus sources and rebuilds
 
 The repository keeps prepared text and its provenance; downloaded source pages live in an ignored cache:
 
 ```text
-assets/
+extension/assets/
   corpus.db                        # Tracked runtime database
 corpus/
   books/<book-id>.json              # All 15 prepared books, including sub-terra
@@ -80,15 +85,17 @@ npm run build
 npm run publish
 ```
 
+Only `extension/` is submitted; the root corpus inputs, acquisition scripts, fixtures, and artwork masters stay in this repository. The root publish script forwards to the extension package.
+
 The publish command authenticates with GitHub and opens a pull request in [`raycast/extensions`](https://github.com/raycast/extensions). Raycast reviews the contribution; once the pull request is merged, the extension is automatically published to the Store. Running the command again updates the submission. This is not an npm registry release.
 
 The installed directory at `~/.config/raycast/extensions/babel-ipsum` contains compiled commands and runtime assets. It is local build output, not the source directory to submit.
 
-See Raycast's [publishing guide](https://developers.raycast.com/basics/publish-an-extension) and [Store preparation guide](https://developers.raycast.com/basics/prepare-an-extension-for-store) for the current submission requirements. Store screenshots belong in `metadata/`; promotional illustrations are separate from screenshots of the extension.
+See Raycast's [publishing guide](https://developers.raycast.com/basics/publish-an-extension) and [Store preparation guide](https://developers.raycast.com/basics/prepare-an-extension-for-store) for the current submission requirements. Store screenshots belong in `extension/metadata/`; promotional illustrations are separate from screenshots of the extension.
 
 ## Artwork
 
-**Library Rascal — Vermilion** is the official Babel Ipsum identity: a sly cat-shaped document and offset copy sheet in vermilion and near-black ink on warm ivory paper. The 512-pixel icon is packaged at `assets/extension-icon.png`; the promotional poster is retained at [media/poster.webp](media/poster.webp).
+**Library Rascal — Vermilion** is the official Babel Ipsum identity: a sly cat-shaped document and offset copy sheet in vermilion and near-black ink on warm ivory paper. The 512-pixel icon is packaged at `extension/assets/extension-icon.png`; the promotional poster is retained at [extension/media/poster.webp](extension/media/poster.webp).
 
 Lossless WebP masters, exact prompts, and palette notes are in [the Library Rascal set](artwork/README.md). With ImageMagick installed, run `npm run artwork:build` to regenerate the 512 × 512 PNG runtime icon. This is an explicit artwork task; normal extension builds use the checked-in icon. Other concepts are preserved locally in the Git-ignored `.artwork-explorations/` directory. Promotional artwork is separate from actual Raycast screenshots.
 
@@ -108,6 +115,6 @@ The four bundled sampled works—Fantine, Divina Commedia, Journey to the West, 
 
 The root [MIT license](LICENSE) covers project software and documentation outside the corpus. [Corpus licensing](corpus/LICENSE.md) and [source notices](corpus/NOTICE.md) cover literary data separately. Historical source substitutions and outstanding edition questions are recorded in those notices and book metadata.
 
-`corpus/LICENSE.md` and `assets/corpus-license.txt` must remain identical. Runtime assets ship with Raycast builds, including `ray develop`, so the corpus license is available without a release-only copy step. Distribution tests verify the license and packaged contents.
+`corpus/LICENSE.md` and `extension/assets/corpus-license.txt` must remain identical. Runtime assets ship with Raycast builds, including `ray develop`, so the corpus license is available without a release-only copy step. Distribution tests verify the license and packaged contents.
 
-`npm run build` clears only repository-local `dist/` before compiling, preventing obsolete command maps from being distributed. It does not register or modify the installed extension. The explicit `BOOK_IDS` catalog in `scripts/build-corpus.mjs` selects the thirteen bundled books. Hindi and Russian prepared files and acquisition records remain development inputs only; they are excluded from the runtime database and settings.
+`npm run build` clears only repository-local `extension/dist/` before compiling, preventing obsolete command maps from being distributed. It does not register or modify the installed extension. The explicit `BOOK_IDS` catalog in `scripts/build-corpus.mjs` selects the thirteen bundled books. Hindi and Russian prepared files and acquisition records remain development inputs only; they are excluded from the runtime database and settings.
