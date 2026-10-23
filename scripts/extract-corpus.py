@@ -1,4 +1,4 @@
-"""Extract story paragraphs from the checked-in Wikisource HTML snapshots.
+"""Extract story paragraphs from the cached Wikisource HTML snapshots.
 
 No network requests or third-party packages are required. Page furniture,
 footnotes, running page numbers, and story headings are not corpus content.
@@ -117,22 +117,24 @@ def extract_story(story, html):
 
 
 def main():
-    stories = json.loads((ROOT / "corpus/stories.json").read_text())
+    stories = json.loads((ROOT / "corpus/editorial/sub-terra/stories.json").read_text())
+    retrieval = json.loads((ROOT / "corpus/provenance/sub-terra.json").read_text())
     extracted = []
     for story in stories:
-        html = (ROOT / f"corpus/sources/{story['slug']}.html").read_text()
+        html = (ROOT / f".cache/corpus/sources/sub-terra/{story['slug']}.html").read_text()
         result = extract_story(story, html)
+        if result["snapshotSha256"] != retrieval["sources"][story["slug"] + ".html"]["snapshotSha256"]:
+            raise ValueError(f"{story['slug']}: snapshot hash mismatch")
         extracted.append(result)
         print(f"{story['title']}: {len(result['paragraphs'])} paragraphs")
-    retrieval = json.loads((ROOT / "corpus/retrieval.json").read_text())
-    output = {"source": "https://es.wikisource.org/wiki/Sub_terra", **retrieval, "stories": extracted}
-    (ROOT / "corpus/original.json").write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n")
+    output = {"source": "https://es.wikisource.org/wiki/Sub_terra", "retrievedOn": retrieval["retrievedOn"], "method": retrieval["method"], "stories": extracted}
+    (ROOT / "corpus/editorial/sub-terra/original.json").write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n")
     words = Counter(
         word.lower()
         for story in extracted for paragraph in story["paragraphs"]
         for word in re.findall(r"[^\W\d_]+", paragraph)
     )
-    (ROOT / "corpus/vocabulary.txt").write_text("\n".join(f"{word}\t{count}" for word, count in sorted(words.items())) + "\n")
+    (ROOT / ".cache/corpus/vocabulary.txt").write_text("\n".join(f"{word}\t{count}" for word, count in sorted(words.items())) + "\n")
 
 
 if __name__ == "__main__":

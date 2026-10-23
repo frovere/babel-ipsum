@@ -28,13 +28,16 @@ test("includes paragraph separators and treats CRLF as one grapheme", () => {
 });
 
 test("statistics follow the exact formatted preview and retained pool prefixes", () => {
-  for (const unit of ["paragraphs", "sentences"] as const) {
-    const pool: GeneratedUnit[] = Array.from({ length: unit === "paragraphs" ? 10 : 20 }, (_, index) => ({
+  for (const unit of ["passages", "sentences"] as const) {
+    const pool: GeneratedUnit[] = Array.from({ length: unit === "passages" ? 10 : 20 }, (_, index) => ({
       id: index + 1,
       text: ["  ¡Hola!  ", "¿Qué tal?", "café."][index] ?? "Texto oculto.",
-      story_id: 1,
+      section_id: 1,
+      book_id: "sub-terra",
+      sentence_separator: " ",
+      snapshot_sha256: "hash",
       title: "Attribution is excluded from statistics",
-      edition: 1904,
+      edition: "1904",
       source_url: "https://example.com/story",
       revision_url: "https://example.com/revision",
     }));
@@ -45,8 +48,8 @@ test("statistics follow the exact formatted preview and retained pool prefixes",
 
     state = updateCountInput(state, "2");
     const expanded = selectPreview(state.request, pool);
-    assert.equal(expanded.text, unit === "paragraphs" ? "¡Hola!\n\n¿Qué tal?" : "¡Hola! ¿Qué tal?");
-    assert.deepEqual(textStatistics(expanded.text), { characters: unit === "paragraphs" ? 17 : 16, words: 3 });
+    assert.equal(expanded.text, unit === "passages" ? "¡Hola!\n\n¿Qué tal?" : "¡Hola! ¿Qué tal?");
+    assert.deepEqual(textStatistics(expanded.text), { characters: unit === "passages" ? 17 : 16, words: 3 });
 
     state = updateCountInput(state, "invalid");
     assert.ok(state.error);
@@ -56,14 +59,33 @@ test("statistics follow the exact formatted preview and retained pool prefixes",
     assert.deepEqual(textStatistics(selectPreview(state.request, pool).text), { characters: 6, words: 1 });
     state = updateCountInput(state, "3");
     assert.deepEqual(textStatistics(selectPreview(state.request, pool).text), {
-      characters: unit === "paragraphs" ? 24 : 22,
+      characters: unit === "passages" ? 24 : 22,
       words: 4,
     });
 
     const regenerated = pool.map((row) => ({ ...row, text: "Otro texto." }));
     assert.deepEqual(textStatistics(selectPreview(state.request, regenerated).text), {
-      characters: unit === "paragraphs" ? 37 : 35,
+      characters: unit === "passages" ? 37 : 35,
       words: 6,
     });
   }
+});
+
+test("uses the book locale with Unicode word and grapheme boundaries", () => {
+  for (const [locale, text] of [
+    ["zh", "春眠不覺曉。"],
+    ["ja", "私は猫です。"],
+    ["ar", "هذه أجنحة متكسرة."],
+    ["hi", "गोदान प्रेमचंद"],
+    ["ko", "진달래꽃"],
+    ["ru", "Преступление и наказание"],
+  ]) {
+    const characters = [...new Intl.Segmenter(locale, { granularity: "grapheme" }).segment(text)].length;
+    const words = [...new Intl.Segmenter(locale, { granularity: "word" }).segment(text)].filter(
+      (part) => part.isWordLike,
+    ).length;
+    assert.deepEqual(textStatistics(text, locale), { characters, words });
+  }
+  assert.deepEqual(textStatistics("Latin words.", "la"), textStatistics("Latin words.", "en"));
+  assert.deepEqual(textStatistics("Latin words.", "not_a_locale"), textStatistics("Latin words.", "en"));
 });

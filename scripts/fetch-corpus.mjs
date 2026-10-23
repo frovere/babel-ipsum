@@ -1,10 +1,11 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout } from "node:timers/promises";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const stories = JSON.parse(readFile("corpus/stories.json"));
+const stories = JSON.parse(readFile("corpus/editorial/sub-terra/stories.json"));
 
 function readFile(path) {
   return readFileSync(join(root, path), "utf8");
@@ -15,7 +16,7 @@ async function fetchPage(url, title) {
     const response = await fetch(url, {
       headers: {
         Accept: "text/html",
-        "User-Agent": "VibedIpsumCorpusBuilder/1.0 (personal offline Raycast extension)",
+        "User-Agent": "VibedIpsumCorpus/1.0 (https://git.cafe/felrov/vibed-ipsum)",
       },
       signal: AbortSignal.timeout(30_000),
     });
@@ -54,11 +55,32 @@ if (process.argv.includes("--check")) {
   console.log("All thirteen sources are reachable; existing snapshots have been kept.");
 } else {
   // Fetch every story successfully before replacing any source snapshots.
-  for (const { story, html } of snapshots) writeFileSync(join(root, `corpus/sources/${story.slug}.html`), html);
+  mkdirSync(join(root, ".cache/corpus/sources/sub-terra"), { recursive: true });
+  mkdirSync(join(root, "corpus/provenance"), { recursive: true });
+  for (const { story, html } of snapshots)
+    writeFileSync(join(root, `.cache/corpus/sources/sub-terra/${story.slug}.html`), html);
   writeFileSync(
-    join(root, "corpus/retrieval.json"),
-    JSON.stringify({ retrievedOn: new Date().toISOString().slice(0, 10), method: "Wikimedia REST HTML API" }, null, 2) +
-      "\n",
+    join(root, "corpus/provenance/sub-terra.json"),
+    JSON.stringify(
+      {
+        schemaVersion: 1,
+        retrievedOn: new Date().toISOString().slice(0, 10),
+        method: "Wikimedia REST HTML API",
+        encoding: "UTF-8",
+        sources: Object.fromEntries(
+          snapshots.map(({ story, html }) => [
+            `${story.slug}.html`,
+            {
+              sourceUrl: story.url,
+              retrievedOn: new Date().toISOString().slice(0, 10),
+              snapshotSha256: createHash("sha256").update(html).digest("hex"),
+            },
+          ]),
+        ),
+      },
+      null,
+      2,
+    ) + "\n",
   );
   console.log("Review source changes, re-extract, and check existing contextual corrections before rebuilding.");
 }

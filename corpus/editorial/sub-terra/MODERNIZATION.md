@@ -1,6 +1,6 @@
 # Criterio de modernización de Sub terra
 
-Esta capa editorial se aplica a los trece cuentos de `original.json`, extraídos de las páginas de Wikisource conservadas en `sources/`. El texto extraído sigue siendo el testimonio de entrada: las correcciones no se escriben sobre él ni sobre las copias HTML.
+Esta capa editorial se aplica a los trece cuentos de `original.json`, extraídos de las páginas de Wikisource conservadas en `.cache/corpus/sources/sub-terra/`. El texto extraído sigue siendo el testimonio de entrada: las correcciones no se escriben sobre él ni sobre las copias HTML.
 
 El propósito es ofrecer el texto con ortografía y acentuación españolas actuales, conservando el vocabulario, las construcciones gramaticales, la narración y los diálogos. No es una edición crítica ni acredita un cotejo completo con los impresos de 1904 y 1917.
 
@@ -16,7 +16,7 @@ El propósito es ofrecer el texto con ortografía y acentuación españolas actu
 
 ## Archivos y orden de aplicación
 
-`corrections.json` contiene **811 pares exactos** de palabra de entrada en minúscula y grafía moderna. El constructor aplica cada par una sola vez sobre palabras completas, conservando las mayúsculas iniciales o totales. No debe iterar las reglas hasta alcanzar un punto fijo: `rió` se moderniza como `rio`, mientras que el `rio` que designa el curso de agua se acentúa como `río` en el testimonio de entrada.
+`corrections.json` contiene **811 pares exactos** de palabra de entrada en minúscula y grafía moderna. El preparador de Sub terra aplica cada par una sola vez sobre palabras completas, conservando las mayúsculas iniciales o totales. No debe iterar las reglas hasta alcanzar un punto fijo: `rió` se moderniza como `rio`, mientras que el `rio` que designa el curso de agua se acentúa como `río` en el testimonio de entrada.
 
 `edits.json` contiene **366 intervenciones contextuales**, cada una con cuento, párrafo numerado desde 1, búsqueda literal, reemplazo y motivo. Se aplican después de las reglas globales y en el orden del archivo. Una búsqueda puede contener una corrección contextual anterior del mismo párrafo. Cada búsqueda debe aparecer exactamente una vez en el estado al que se aplica; una coincidencia ausente o repetida debe detener la construcción.
 

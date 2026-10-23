@@ -21,9 +21,9 @@ __pycache__/
 *.sqlite.building
 .corpus-test-*/
 /.qa/
+/.cache/
 
 # Downloaded corpus sources and generated vocabulary
 /corpus/sources/
 /corpus/books/sources/
 /corpus/vocabulary.txt
-/.cache/

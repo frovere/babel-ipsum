@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
@@ -7,24 +7,32 @@ import { DatabaseSync } from "node:sqlite";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const readJSON = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
 
-export function modernizeParagraph(text, story, paragraph, corrections, edits) {
-  let modernized = text.normalize("NFC").replace(/\p{L}+/gu, (word) => {
-    const replacement = corrections[word.toLocaleLowerCase("es")];
-    if (replacement === undefined) return word;
-    if (word === word.toLocaleUpperCase("es")) return replacement.toLocaleUpperCase("es");
-    if (word[0] === word[0].toLocaleUpperCase("es")) {
-      return replacement[0].toLocaleUpperCase("es") + replacement.slice(1);
-    }
-    return replacement;
-  });
-  for (const edit of edits.filter((edit) => edit.story === story && edit.paragraph === paragraph)) {
-    if (!edit.find || modernized.split(edit.find).length !== 2) {
-      throw new Error(`${story}, paragraph ${paragraph}: correction must match exactly once: ${edit.find}`);
-    }
-    modernized = modernized.replace(edit.find, edit.replace);
-  }
-  return modernized.replace(/\s+/gu, " ").trim();
-}
+// Match O Alienista's passage-text size, while retaining complete works in full.
+export const PASSAGE_BUDGET = 101_461;
+export const SAMPLED_BOOK_SCOPES = Object.freeze({
+  "les-miserables-fantine":
+    "Passages sampled across all eight books of Fantine only; bundled chapter links identify the selection.",
+  "divina-commedia":
+    "Verse passages sampled across Inferno, Purgatorio, and Paradiso; bundled canto links identify the selection.",
+  "journey-to-the-west":
+    "Complete prose and verse units sampled throughout the 100-chapter novel; bundled chapter links identify the selection.",
+  kokoro: "Complete paragraphs sampled across all 110 numbered subdivisions of all three parts of Kokoro.",
+});
+export const BOOK_IDS = [
+  "sub-terra",
+  "de-finibus",
+  "cuentos-de-la-selva",
+  "o-alienista",
+  "macbeth",
+  "les-miserables-fantine",
+  "divina-commedia",
+  "die-verwandlung",
+  "journey-to-the-west",
+  "kokoro",
+  "jindallae-kkot",
+  "oedipus-tyrannus",
+  "the-broken-wings",
+];
 
 export function segmentSentences(paragraph) {
   const sentences = [];
@@ -62,80 +70,311 @@ export function segmentSentences(paragraph) {
   return sentences;
 }
 
-export function buildCorpus(outputPath = join(root, "assets/subterra.sqlite")) {
-  const original = readJSON("corpus/original.json");
-  const corrections = readJSON("corpus/corrections.json");
-  const edits = readJSON("corpus/edits.json");
-  if (original.stories.length !== 13 || new Set(original.stories.map((story) => story.id)).size !== 13) {
-    throw new Error("The corpus must contain all thirteen distinct stories.");
+// Use source order for storage, but spread selection through every section.
+// The first, last and middle candidates are visited before progressively finer gaps.
+function spreadIndices(length) {
+  if (!length) return [];
+  if (length === 1) return [0];
+  const result = [0, length - 1];
+  const gaps = [[1, length - 2]];
+  for (let cursor = 0; cursor < gaps.length; cursor++) {
+    const [left, right] = gaps[cursor];
+    if (left > right) continue;
+    const middle = Math.floor((left + right) / 2);
+    result.push(middle);
+    gaps.push([left, middle - 1], [middle + 1, right]);
   }
-  for (const edit of edits) {
-    const story = original.stories.find((story) => story.slug === edit.story);
-    if (!story || !Number.isInteger(edit.paragraph) || !story.paragraphs[edit.paragraph - 1]) {
-      throw new Error(`Unknown correction target: ${edit.story}, paragraph ${edit.paragraph}`);
+  return result;
+}
+
+export function selectPassages(sections, budget = PASSAGE_BUDGET) {
+  if (!Number.isSafeInteger(budget) || budget < 1) throw new Error("The passage budget must be positive bytes.");
+  const total = sections.reduce(
+    (sum, section) => sum + section.passages.reduce((bytes, passage) => bytes + Buffer.byteLength(passage.text), 0),
+    0,
+  );
+  if (total <= budget) return sections.map((section) => ({ ...section, passages: [...section.passages] }));
+  const selections = sections.map(() => new Set());
+  const orders = sections.map((section) => spreadIndices(section.passages.length));
+  let bytes = 0;
+  const rounds = Math.max(0, ...orders.map((order) => order.length));
+  for (let round = 0; round < rounds; round++) {
+    for (const [index, section] of sections.entries()) {
+      const candidate = orders[index][round];
+      if (candidate === undefined) continue;
+      const size = Buffer.byteLength(section.passages[candidate].text);
+      if (bytes + size > budget) continue;
+      selections[index].add(candidate);
+      bytes += size;
     }
   }
+  return sections
+    .map((section, index) => ({
+      ...section,
+      passages: section.passages.filter((_, position) => selections[index].has(position)),
+    }))
+    .filter((section) => section.passages.length);
+}
+
+export function flattenSourceText(text, locale) {
+  const separator = /^(?:zh|ja)(?:-|$)/u.test(locale) ? "" : " ";
+  return text
+    .replace(/\r\n?/gu, "\n")
+    .replace(/[^\S\n]+/gu, " ")
+    .replace(/ *\n+ */gu, separator)
+    .trim();
+}
+
+export function segmentSourceSentences(text, locale) {
+  // A printed verse line is not a sentence boundary. Keep original punctuation,
+  // including unpunctuated complete source units; never manufacture punctuation.
+  const flat = flattenSourceText(text, locale);
+  // Reuse the reviewed Spanish dialogue policy for Quiroga as well as Lillo.
+  if (/^es(?:-|$)/u.test(locale)) return segmentSentences(flat);
+  const segmenter = new Intl.Segmenter(locale, { granularity: "sentence" });
+  const ranges = [];
+  for (const { index, segment } of segmenter.segment(flat)) {
+    const previous = ranges.at(-1);
+    if (
+      previous &&
+      /(?<!\p{L})(?:Mr|Mrs|Ms|Dr|Prof|Mme|Mlle|M|Sr|Sra|St|etc|bzw|Nr)\.$/iu.test(
+        flat.slice(previous.start, previous.end).trimEnd(),
+      )
+    ) {
+      previous.end = index + segment.length;
+      continue;
+    }
+    ranges.push({ start: index, end: index + segment.length });
+  }
+  const sentences = [];
+  for (const range of ranges) {
+    const previous = sentences.at(-1);
+    const value = flat.slice(range.start, range.end);
+    const trimmed = value.trimStart();
+    // ICU can split French speech before a spaced closing guillemet. Move the
+    // closing punctuation to its speech, retaining a lowercase attribution too.
+    const closer = trimmed.match(/^[»”’」』》】）)\]]+/u);
+    if (previous && closer) {
+      const end = range.start + value.length - trimmed.length + closer[0].length;
+      const after = flat.slice(end, range.end).trimStart();
+      previous.end = /^\p{Ll}/u.test(after) ? range.end : end;
+      if (/^\p{Ll}/u.test(after)) continue;
+      range.start = end;
+    } else if (
+      previous &&
+      /^\p{Ll}/u.test(trimmed) &&
+      /[.!?…][»”’"')\]]+$/u.test(flat.slice(previous.start, previous.end).trimEnd())
+    ) {
+      previous.end = range.end;
+      continue;
+    }
+    const sentence = flat.slice(range.start, range.end).trim();
+    if (/\p{L}/u.test(sentence) && !/[:：]$/u.test(sentence)) sentences.push(range);
+  }
+  return sentences.map(({ start, end }) => flat.slice(start, end).trim());
+}
+
+function normalizedText(passage) {
+  const text = passage.text.normalize("NFC").replace(/\r\n?/gu, "\n");
+  return passage.kind === "prose"
+    ? text.replace(/\s+/gu, " ").trim()
+    : text
+        .split("\n")
+        .map((line) => line.replace(/[^\S\n]+/gu, " ").trim())
+        .join("\n")
+        .replace(/\n{3,}/gu, "\n\n")
+        .trim();
+}
+
+function validateSource(input) {
+  const book = input.book;
+  for (const key of [
+    "id",
+    "title",
+    "author",
+    "language",
+    "locale",
+    "direction",
+    "sourceUrl",
+    "edition",
+    "scope",
+    "license",
+    "attribution",
+    "editorialNote",
+  ]) {
+    if (typeof book?.[key] !== "string" || !book[key].trim()) throw new Error(`Missing book field: ${key}`);
+  }
+  if (input.schemaVersion !== 1 || !BOOK_IDS.includes(book.id)) throw new Error(`Unknown book: ${book.id}`);
+  if (!["ltr", "rtl"].includes(book.direction) || !["", " "].includes(book.sentenceSeparator))
+    throw new Error(`${book.id}: invalid text direction or sentence separator`);
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(input.retrievedOn) || !input.sections?.length)
+    throw new Error(`${book.id}: missing source date or sections`);
+  const ids = new Set();
+  const positions = new Set();
+  const sections = input.sections.map((section) => {
+    if (
+      !section.id ||
+      ids.has(section.id) ||
+      !Number.isSafeInteger(section.position) ||
+      section.position < 1 ||
+      positions.has(section.position)
+    )
+      throw new Error(`${book.id}: duplicate or invalid source section`);
+    ids.add(section.id);
+    positions.add(section.position);
+    for (const key of ["title", "sourceUrl", "revisionUrl", "snapshotPath", "snapshotSha256"])
+      if (typeof section[key] !== "string" || !section[key]) throw new Error(`${book.id}: missing ${key}`);
+    for (const url of [section.sourceUrl, section.revisionUrl, book.sourceUrl])
+      if (!["https:", "http:"].includes(new URL(url).protocol)) throw new Error(`${book.id}: invalid source URL`);
+    const snapshotPath = resolve(root, section.snapshotPath);
+    if (!snapshotPath.startsWith(join(root, ".cache/corpus/sources", book.id) + "/"))
+      throw new Error(`${book.id}: invalid snapshot path`);
+    if (!/^[a-f0-9]{64}$/u.test(section.snapshotSha256))
+      throw new Error(`${book.id}/${section.id}: invalid source snapshot hash`);
+    const passagePositions = new Set();
+    if (!section.passages?.length) throw new Error(`${book.id}/${section.id}: no passages`);
+    const passages = section.passages.map((passage) => {
+      if (!Number.isSafeInteger(passage.position) || passage.position < 1 || passagePositions.has(passage.position))
+        throw new Error(`${book.id}/${section.id}: invalid passage position`);
+      passagePositions.add(passage.position);
+      if (!["prose", "verse", "speech"].includes(passage.kind) || typeof passage.text !== "string")
+        throw new Error(`${book.id}/${section.id}: invalid passage`);
+      const text = normalizedText(passage);
+      if (!/\p{L}/u.test(text) || /<\/?(?:p|span|div)\b|Obtenido de|Descargar como/u.test(text))
+        throw new Error(`${book.id}/${section.id}/${passage.position}: unexpected source furniture`);
+      return { ...passage, text };
+    });
+    return { ...section, passages: passages.sort((a, b) => a.position - b.position) };
+  });
+  return { ...input, sections: sections.sort((a, b) => a.position - b.position) };
+}
+
+export function loadBooks() {
+  // Only this explicit catalog is bundled; other prepared books remain archival inputs.
+  return BOOK_IDS.map((id) => {
+    const source = validateSource(readJSON(`corpus/books/${id}.json`));
+    if (source.book.id !== id) throw new Error(`Book ID does not match filename: ${id}`);
+    return source;
+  });
+}
+
+export function buildCorpus(outputPath = join(root, "assets/corpus.sqlite")) {
+  const sources = loadBooks();
   const temporaryPath = `${outputPath}.building`;
-  // Recreate the generated database without ever touching the installed corpus.
   writeFileSync(temporaryPath, "");
   const db = new DatabaseSync(temporaryPath);
   const stats = [];
+  let success = false;
   try {
     db.exec(`
       PRAGMA foreign_keys = ON;
-      PRAGMA user_version = 1;
-      CREATE TABLE stories (
-        id INTEGER PRIMARY KEY, title TEXT NOT NULL, edition INTEGER NOT NULL,
-        source_url TEXT NOT NULL, revision_url TEXT NOT NULL
+      PRAGMA user_version = 2;
+      CREATE TABLE books (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, author TEXT NOT NULL, language TEXT NOT NULL,
+        locale TEXT NOT NULL, direction TEXT NOT NULL CHECK(direction IN ('ltr', 'rtl')),
+        source_url TEXT NOT NULL, edition TEXT NOT NULL, scope TEXT NOT NULL,
+        license TEXT NOT NULL, attribution TEXT NOT NULL, editorial_note TEXT NOT NULL,
+        sentence_separator TEXT NOT NULL CHECK(sentence_separator IN ('', ' '))
       );
-      CREATE TABLE paragraphs (
-        id INTEGER PRIMARY KEY, story_id INTEGER NOT NULL REFERENCES stories(id),
-        position INTEGER NOT NULL, text TEXT NOT NULL CHECK(length(text) > 0),
-        UNIQUE(story_id, position)
+      CREATE TABLE sections (
+        id INTEGER PRIMARY KEY, book_id TEXT NOT NULL REFERENCES books(id), source_id TEXT NOT NULL,
+        title TEXT NOT NULL, position INTEGER NOT NULL, edition TEXT NOT NULL,
+        source_url TEXT NOT NULL, revision_url TEXT NOT NULL, snapshot_sha256 TEXT NOT NULL,
+        UNIQUE(book_id, source_id), UNIQUE(book_id, position)
+      );
+      CREATE TABLE passages (
+        id INTEGER PRIMARY KEY, section_id INTEGER NOT NULL REFERENCES sections(id),
+        position INTEGER NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL CHECK(length(text) > 0),
+        UNIQUE(section_id, position)
       );
       CREATE TABLE sentences (
-        id INTEGER PRIMARY KEY, paragraph_id INTEGER NOT NULL REFERENCES paragraphs(id),
+        id INTEGER PRIMARY KEY, passage_id INTEGER NOT NULL REFERENCES passages(id),
         position INTEGER NOT NULL, text TEXT NOT NULL CHECK(length(text) > 0),
-        UNIQUE(paragraph_id, position)
+        UNIQUE(passage_id, position)
       );
       CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       BEGIN;
     `);
-    const insertStory = db.prepare("INSERT INTO stories VALUES (?, ?, ?, ?, ?)");
-    const insertParagraph = db.prepare("INSERT INTO paragraphs VALUES (?, ?, ?, ?)");
+    const insertBook = db.prepare("INSERT INTO books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    const insertSection = db.prepare("INSERT INTO sections VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    const insertPassage = db.prepare("INSERT INTO passages VALUES (?, ?, ?, ?, ?)");
     const insertSentence = db.prepare("INSERT INTO sentences VALUES (?, ?, ?, ?)");
-    let paragraphId = 0;
+    let sectionId = 0;
+    let passageId = 0;
     let sentenceId = 0;
-    for (const story of original.stories) {
-      insertStory.run(story.id, story.title, story.edition, story.url, story.revisionUrl);
-      let storySentences = 0;
-      for (const [index, source] of story.paragraphs.entries()) {
-        const paragraph = modernizeParagraph(source, story.slug, index + 1, corrections, edits);
-        if (!paragraph || /<\/?(?:p|span|div)\b|Obtenido de|Se respeta la ortografía|Descargar como/u.test(paragraph)) {
-          throw new Error(`${story.slug}, paragraph ${index + 1}: unexpected source furniture`);
-        }
-        insertParagraph.run(++paragraphId, story.id, index + 1, paragraph);
-        const sentences = segmentSentences(paragraph);
-        for (const [position, sentence] of sentences.entries()) {
-          insertSentence.run(++sentenceId, paragraphId, position + 1, sentence);
-          storySentences++;
+    for (const source of sources) {
+      const book = source.book;
+      const sampledScope = SAMPLED_BOOK_SCOPES[book.id];
+      const selected = sampledScope ? selectPassages(source.sections) : source.sections;
+      const available = source.sections.reduce((count, section) => count + section.passages.length, 0);
+      const count = selected.reduce((count, section) => count + section.passages.length, 0);
+      const scope = `${sampledScope ?? book.scope} Bundled ${count} of ${available} prepared passages from ${selected.length} source sections.`;
+      insertBook.run(
+        book.id,
+        book.title,
+        book.author,
+        book.language,
+        book.locale,
+        book.direction,
+        book.sourceUrl,
+        book.edition,
+        scope,
+        book.license,
+        book.attribution,
+        book.editorialNote,
+        book.sentenceSeparator,
+      );
+      const beforeSentences = sentenceId;
+      let passageBytes = 0;
+      let sentenceBytes = 0;
+      for (const section of selected) {
+        insertSection.run(
+          ++sectionId,
+          book.id,
+          section.id,
+          section.title,
+          section.position,
+          section.edition ?? book.edition,
+          section.sourceUrl,
+          section.revisionUrl,
+          section.snapshotSha256,
+        );
+        for (const passage of section.passages) {
+          insertPassage.run(++passageId, sectionId, passage.position, passage.kind, passage.text);
+          passageBytes += Buffer.byteLength(passage.text);
+          const sentences =
+            book.id === "sub-terra"
+              ? segmentSentences(passage.text)
+              : segmentSourceSentences(passage.text, book.locale);
+          for (const [position, sentence] of sentences.entries()) {
+            insertSentence.run(++sentenceId, passageId, position + 1, sentence);
+            sentenceBytes += Buffer.byteLength(sentence);
+          }
         }
       }
-      stats.push({ title: story.title, paragraphs: story.paragraphs.length, sentences: storySentences });
-      if (storySentences < 20) throw new Error(`${story.slug}: unexpectedly few complete sentences`);
+      if (count < 10 || sentenceId - beforeSentences < 20)
+        throw new Error(`${book.id}: needs at least ten passages and twenty sentence excerpts`);
+      stats.push({
+        id: book.id,
+        sections: selected.length,
+        passages: count,
+        sentences: sentenceId - beforeSentences,
+        passageBytes,
+        sentenceBytes,
+        availablePassages: available,
+      });
     }
-    const inputHash = createHash("sha256").update(JSON.stringify({ original, corrections, edits })).digest("hex");
+    const inputHash = createHash("sha256").update(JSON.stringify(sources)).digest("hex");
     const metadata = {
-      author: "Baldomero Lillo",
-      title: "Sub terra",
-      source: original.source,
-      retrieved_on: original.retrievedOn,
       input_sha256: inputHash,
-      modernization:
-        "Spelling and accents modernized; documented transcription errors corrected. See corpus/MODERNIZATION.md.",
-      attribution: "Wikisource contributors; source and revision links are recorded per story. See corpus/NOTICE.md.",
+      passage_budget_bytes: String(PASSAGE_BUDGET),
+      sampled_book_ids: JSON.stringify(Object.keys(SAMPLED_BOOK_SCOPES)),
+      selection_policy:
+        "The passage budget applies only to the six previously sampled works; complete works are retained in full. Whole source units; first, last and progressively distributed passages, round-robin across sections; no padding or truncation.",
       sentence_policy:
-        "Terminal-punctuated excerpts; abbreviations and lowercase dialogue attributions stay attached. Incomplete speech introductions remain in paragraph mode only.",
+        "Spanish retains the reviewed dialogue boundaries. Other books use locale-aware ICU sentence boundaries after joining printed lines. Unpunctuated complete verse units are retained without invented punctuation; incomplete colon introductions are omitted.",
+      attribution: "Per-book and per-section provenance is recorded in books and sections. See corpus/NOTICE.md.",
+      book_stats: JSON.stringify(stats),
     };
     for (const [key, value] of Object.entries(metadata))
       db.prepare("INSERT INTO metadata VALUES (?, ?)").run(key, value);
@@ -143,8 +382,10 @@ export function buildCorpus(outputPath = join(root, "assets/subterra.sqlite")) {
     if (db.prepare("PRAGMA integrity_check").get().integrity_check !== "ok")
       throw new Error("Invalid corpus database.");
     if (db.prepare("PRAGMA foreign_key_check").all().length) throw new Error("Broken source relationships.");
+    success = true;
   } finally {
     db.close();
+    if (!success) rmSync(temporaryPath, { force: true });
   }
   renameSync(temporaryPath, outputPath);
   return stats;
@@ -153,5 +394,5 @@ export function buildCorpus(outputPath = join(root, "assets/subterra.sqlite")) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const stats = buildCorpus();
   console.table(stats);
-  console.log("Built assets/subterra.sqlite from the checked-in source snapshots and spelling corrections.");
+  console.log("Built assets/corpus.sqlite from the checked-in multilingual sources.");
 }
